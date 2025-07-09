@@ -91,4 +91,25 @@ public class CoverLetterService {
 
         entity.getQuestions().addAll(updatedQuestions);
     }
+
+    /**
+     * 자기소개서 삭제
+     * 권한 체크를 위해 사용자 ID도 함께 검증
+     */
+    @Transactional
+    public void delete(Long id, Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("사용자 ID가 필요합니다.");
+        }
+
+        CoverLetter entity = coverLetterRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 자기소개서가 없습니다. id=" + id));
+
+        // 권한 체크: 해당 자기소개서의 작성자인지 확인
+        if (!entity.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("해당 자기소개서를 삭제할 권한이 없습니다.");
+        }
+
+        coverLetterRepository.delete(entity);
+    }
 }

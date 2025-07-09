@@ -63,4 +63,17 @@ public class CoverLetterController {
         coverLetterService.update(id, dto);
         return ResponseEntity.ok().build();
     }
+
+    /**
+     * 자기소개서 삭제
+     * 권한 체크를 위해 사용자 ID도 함께 받음
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> deleteCoverLetter(
+            @PathVariable Long id,
+            @RequestHeader("X-User-ID") Long userId) {
+
+        coverLetterService.delete(id, userId);
+        return ResponseEntity.ok(Map.of("message", "자기소개서가 삭제되었습니다."));
+    }
 }
