@@ -35,6 +35,7 @@ public class HomePageService {
     private final SpecLinkRepository specLinkRepository;
     private final SpecProjectRepository specProjectRepository;
     private final SpecActivityRepository specActivityRepository;
+    private final SpecMilitaryRepository specMilitaryRepository;
 
     // UserProfile CRUD
     public UserProfileDto getUserProfile(Long userId) {
@@ -279,6 +280,8 @@ public class HomePageService {
         completion.setLink(specLinkRepository.existsByUserId(userId));
         completion.setMilitary(false); // Need to implement
         completion.setPortfolio(specProjectRepository.existsByUserId(userId));
+        completion.setMilitary(specMilitaryRepository.countByUserId(userId) > 0);
+        completion.setPortfolio(specProjectRepository.existsByUserId(userId));
 
         // Calculate percentage
         int completed = 0;
@@ -296,6 +299,7 @@ public class HomePageService {
         completion.setCompletionPercentage((completed * 100) / 10);
 
         return completion;
+
     }
 
     // Converter methods
