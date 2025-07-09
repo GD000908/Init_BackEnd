@@ -1,0 +1,8 @@
+/target/
+/.idea/
+/.gradle/
+/out/
+/.env
+*.iml
+application-*.yml
+application-*.properties
