@@ -9,10 +9,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+// UserSpecService.java 상단에 추가할 import 문들
+
+import java.time.Period; // 날짜 간격 계산용
+import java.time.LocalDate; // 이미 있을 수도 있음
+
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -383,19 +386,73 @@ public class UserSpecService {
                 });
     }
 
+    /**
+     * 실제 근무 기간을 기반으로 총 경력을 계산하는 메서드
+     * 시작일과 종료일을 분석하여 정확한 경력 기간을 산출합니다.
+     */
     private String calculateTotalExperience(List<SpecCareer> careers) {
         if (careers.isEmpty()) {
             return "0개월";
         }
 
-        int totalMonths = careers.size() * 12;
-        if (totalMonths < 12) {
+        int totalMonths = 0;
+
+        for (SpecCareer career : careers) {
+            LocalDate startDate = career.getStartDate();
+            LocalDate endDate = career.getEndDate();
+
+            // 시작일이 없으면 해당 경력은 계산에서 제외
+            if (startDate == null) {
+                continue;
+            }
+
+            // 종료일이 없으면 현재 날짜를 종료일로 설정 (현재 재직중)
+            if (endDate == null || career.getIsCurrent()) {
+                endDate = LocalDate.now();
+            }
+
+            // 시작일이 종료일보다 뒤인 경우 건너뛰기 (잘못된 데이터)
+            if (startDate.isAfter(endDate)) {
+                continue;
+            }
+
+            // 개월 수 계산
+            int months = calculateMonthsBetween(startDate, endDate);
+            totalMonths += months;
+        }
+
+        // 결과 포맷팅
+        if (totalMonths == 0) {
+            return "0개월";
+        } else if (totalMonths < 12) {
             return totalMonths + "개월";
         } else {
             int years = totalMonths / 12;
-            int months = totalMonths % 12;
-            return years + "년" + (months > 0 ? " " + months + "개월" : "");
+            int remainingMonths = totalMonths % 12;
+
+            if (remainingMonths == 0) {
+                return years + "년";
+            } else {
+                return years + "년 " + remainingMonths + "개월";
+            }
         }
+    }
+
+    /**
+     * 두 날짜 사이의 개월 수를 계산하는 헬퍼 메서드
+     */
+    private int calculateMonthsBetween(LocalDate startDate, LocalDate endDate) {
+        Period period = Period.between(startDate, endDate);
+
+        // 년수를 개월로 변환하고 개월 수를 더함
+        int totalMonths = period.getYears() * 12 + period.getMonths();
+
+        // 일수가 15일 이상이면 1개월 추가 (반올림 효과)
+        if (period.getDays() >= 15) {
+            totalMonths += 1;
+        }
+
+        return totalMonths;
     }
 
     // === Entity ↔ DTO 변환 메서드들 (변경 없음, 생략) ===
