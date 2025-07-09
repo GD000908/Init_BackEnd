@@ -15,4 +15,5 @@ public class SignupDto {
     private String phone;
     private String email;
     private List<String> interests;
+    private String jobTitle;   // 희망 직무
 }

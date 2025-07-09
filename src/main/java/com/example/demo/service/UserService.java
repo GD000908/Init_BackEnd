@@ -5,14 +5,17 @@ import com.example.demo.dto.LoginResponseDto;
 import com.example.demo.dto.SignupDto;
 import com.example.demo.entity.Interest;
 import com.example.demo.entity.User;
+import com.example.demo.entity.UserProfile;
 import com.example.demo.repository.InterestRepository;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.repository.UserProfileRepository;
 import com.example.demo.util.JwtUtil; // 🔥 JWT 유틸리티 추가
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -23,10 +26,11 @@ public class UserService {
     private final InterestRepository interestRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil; // 🔥 JWT 유틸리티 주입
+    private final UserProfileRepository userProfileRepository;
 
     /**
      * 회원가입 처리 메서드.
-     * userId와 email의 중복을 확인한 후 사용자를 생성합니다.
+     * 사용자를 생성하고, 기본 프로필을 함께 생성합니다.
      */
     @Transactional
     public void signup(SignupDto dto) {
@@ -40,10 +44,13 @@ public class UserService {
             throw new IllegalArgumentException("이미 가입된 이메일입니다.");
         }
 
-        // 관심분야 엔티티 조회
-        List<Interest> interests = interestRepository.findByNameIn(dto.getInterests());
+        // 3. 관심분야 엔티티 조회
+        List<Interest> interests = new ArrayList<>();
+        if (dto.getInterests() != null && !dto.getInterests().isEmpty()) {
+            interests = interestRepository.findByNameIn(dto.getInterests());
+        }
 
-        // User 엔티티 생성
+        // 4. User 엔티티 생성
         User user = User.builder()
                 .userId(dto.getUserId())
                 .email(dto.getEmail())
@@ -55,6 +62,16 @@ public class UserService {
                 .build();
 
         userRepository.save(user);
+
+        // [MODIFIED] 5. 회원가입 시 기본 UserProfile 생성
+        UserProfile userProfile = new UserProfile();
+        userProfile.setUser(user);
+        userProfile.setName(user.getName());
+        userProfile.setEmail(user.getEmail());
+        userProfile.setCareerType("신입"); // 기본값 설정
+        userProfile.setJobTitle("미정");   // 기본값 설정
+        userProfile.setMatching(true);      // 기본값 설정
+        userProfileRepository.save(userProfile);
     }
 
     /**

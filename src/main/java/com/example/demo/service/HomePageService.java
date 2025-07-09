@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -77,7 +78,19 @@ public class HomePageService {
                 .orElse(new DesiredConditions());
 
         conditions.setUser(user);
-        conditions.setJobs(dto.getJobs());
+
+        // 🔥 jobs가 비어있거나 null일 때 UserProfile의ProfileCompletionDto  jobTitle을 기본값으로 설정
+        if (dto.getJobs() == null || dto.getJobs().isEmpty()) {
+            UserProfile userProfile = userProfileRepository.findByUserId(userId).orElse(null);
+            if (userProfile != null && userProfile.getJobTitle() != null && !userProfile.getJobTitle().trim().isEmpty()) {
+                conditions.setJobs(Arrays.asList(userProfile.getJobTitle()));
+            } else {
+                conditions.setJobs(dto.getJobs());
+            }
+        } else {
+            conditions.setJobs(dto.getJobs());
+        }
+
         conditions.setLocations(dto.getLocations());
         conditions.setSalary(dto.getSalary());
         conditions.setOthers(dto.getOthers());
@@ -278,9 +291,10 @@ public class HomePageService {
         completion.setLanguage(specLanguageRepository.existsByUserId(userId));
         completion.setSkill(specSkillRepository.existsByUserId(userId));
         completion.setLink(specLinkRepository.existsByUserId(userId));
-        completion.setMilitary(false); // Need to implement
-        completion.setPortfolio(specProjectRepository.existsByUserId(userId));
+
+        // 🔥 병역 완성도를 실제 데이터로 체크 (중복 제거)
         completion.setMilitary(specMilitaryRepository.countByUserId(userId) > 0);
+
         completion.setPortfolio(specProjectRepository.existsByUserId(userId));
 
         // Calculate percentage
@@ -299,7 +313,6 @@ public class HomePageService {
         completion.setCompletionPercentage((completed * 100) / 10);
 
         return completion;
-
     }
 
     // Converter methods
