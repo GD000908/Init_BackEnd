@@ -6,10 +6,11 @@ import com.example.demo.dto.SignupDto;
 import com.example.demo.entity.Interest;
 import com.example.demo.entity.User;
 import com.example.demo.entity.UserProfile;
+import com.example.demo.entity.UserRole;
 import com.example.demo.repository.InterestRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.repository.UserProfileRepository;
-import com.example.demo.util.JwtUtil; // 🔥 JWT 유틸리티 추가
+import com.example.demo.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,7 +26,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final InterestRepository interestRepository;
     private final BCryptPasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil; // 🔥 JWT 유틸리티 주입
+    private final JwtUtil jwtUtil;
     private final UserProfileRepository userProfileRepository;
 
     /**
@@ -50,7 +51,13 @@ public class UserService {
             interests = interestRepository.findByNameIn(dto.getInterests());
         }
 
-        // 4. User 엔티티 생성
+        // 🔥 4. 관리자 계정인지 확인하여 role 설정
+        UserRole userRole = UserRole.USER; // 기본값
+        if ("admin".equals(dto.getUserId()) || dto.getUserId().startsWith("admin")) {
+            userRole = UserRole.ADMIN;
+        }
+
+        // 5. User 엔티티 생성
         User user = User.builder()
                 .userId(dto.getUserId())
                 .email(dto.getEmail())
@@ -58,22 +65,24 @@ public class UserService {
                 .name(dto.getName())
                 .phone(dto.getPhone())
                 .isActive(true)
+                .role(userRole) // 🔥 역할 설정
                 .interests(interests)
                 .build();
 
         userRepository.save(user);
 
-        // [MODIFIED] 5. 회원가입 시 기본 UserProfile 생성
-        UserProfile userProfile = new UserProfile();
-        userProfile.setUser(user);
-        userProfile.setName(user.getName());
-        userProfile.setEmail(user.getEmail());
-        userProfile.setCareerType("신입"); // 기본값 설정
-        userProfile.setJobTitle("미정");   // 기본값 설정
-        userProfile.setMatching(true);      // 기본값 설정
-        userProfileRepository.save(userProfile);
+        // 6. 일반 사용자만 기본 UserProfile 생성 (관리자는 프로필 불필요)
+        if (userRole == UserRole.USER) {
+            UserProfile userProfile = new UserProfile();
+            userProfile.setUser(user);
+            userProfile.setName(user.getName());
+            userProfile.setEmail(user.getEmail());
+            userProfile.setCareerType("신입");
+            userProfile.setJobTitle("미정");
+            userProfile.setMatching(true);
+            userProfileRepository.save(userProfile);
+        }
     }
-
 
     /**
      * 로그인 처리 메서드.
@@ -90,17 +99,26 @@ public class UserService {
             throw new IllegalArgumentException("아이디 또는 비밀번호가 일치하지 않습니다.");
         }
 
-        // 🔥 JWT 토큰 생성
-        String token = jwtUtil.generateToken(user.getUserId(), user.getId());
+        // 계정 활성화 상태 확인
+        if (!user.getIsActive()) {
+            throw new IllegalArgumentException("비활성화된 계정입니다. 관리자에게 문의하세요.");
+        }
 
-        // 인증 성공 시, JWT 토큰과 함께 LoginResponseDto에 정보를 담아 반환합니다.
-        return new LoginResponseDto(user.getId(), user.getUserId(), user.getName(), token);
+        // 🔥 JWT 토큰 생성 (역할 정보 포함)
+        String token = jwtUtil.generateToken(user.getUserId(), user.getId(), user.getRole().name());
+
+        // 🔥 인증 성공 시, JWT 토큰과 역할 정보를 함께 반환
+        return new LoginResponseDto(
+                user.getId(),
+                user.getUserId(),
+                user.getName(),
+                token,
+                user.getRole()
+        );
     }
 
     /**
-     * 🆕 아이디 중복 확인
-     * @param userId 확인할 아이디
-     * @return 중복이면 true, 사용 가능하면 false
+     * 아이디 중복 확인
      */
     @Transactional(readOnly = true)
     public boolean checkUserIdDuplicate(String userId) {
@@ -111,9 +129,7 @@ public class UserService {
     }
 
     /**
-     * 🆕 이메일 중복 확인
-     * @param email 확인할 이메일
-     * @return 중복이면 true, 사용 가능하면 false
+     * 이메일 중복 확인
      */
     @Transactional(readOnly = true)
     public boolean checkEmailDuplicate(String email) {

@@ -29,13 +29,19 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        // 🆕 이메일 인증 API 허용 추가
+                        // 🔥 공개 API (인증 불필요)
                         .requestMatchers("/api/signup", "/api/login", "/api/check-userid/**", "/api/check-email/**",
                                 "/api/send-email-code", "/api/verify-email-code").permitAll()
+
+                        // 🔥 일반 사용자 API (JWT 인증 필요)
                         .requestMatchers("/api/cover-letters/**").permitAll()
                         .requestMatchers("/api/resumes/**").permitAll()
                         .requestMatchers("/api/job-calendar/**").permitAll()
-                        // JWT 인증 필요
+
+                        // 🔥 관리자 전용 API (관리자 권한 필요)
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )
                 // JWT 필터 추가

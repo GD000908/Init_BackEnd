@@ -1,6 +1,7 @@
 package com.example.demo.entity;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -29,6 +30,8 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
+    // 🔥 관리자 API에서는 비밀번호 노출 방지
+    @JsonIgnore
     @Column(nullable = false)
     private String password;
 
@@ -44,6 +47,12 @@ public class User {
     @Column(name = "is_active", columnDefinition = "BOOLEAN DEFAULT TRUE")
     private Boolean isActive = true;
 
+    // 🔥 역할 필드 추가 (기본값: USER)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
+    @Builder.Default
+    private UserRole role = UserRole.USER;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -52,12 +61,14 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // 🔥 관리자 API에서는 이력서 정보 제외 (성능상 불필요)
+    @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
     @Builder.Default
     private List<Resume> resumes = new ArrayList<>();
 
-    // 🔥 관심분야 ManyToMany 추가
+    // 🔥 순환 참조 방지 - 관리자 API에서는 관심분야 제외
+    @JsonIgnore
     @ManyToMany
     @JoinTable(
             name = "user_interest",
@@ -66,4 +77,13 @@ public class User {
     )
     @Builder.Default
     private List<Interest> interests = new ArrayList<>();
+
+    // 🔥 역할 확인 메서드
+    public boolean isAdmin() {
+        return UserRole.ADMIN.equals(this.role);
+    }
+
+    public boolean isUser() {
+        return UserRole.USER.equals(this.role);
+    }
 }

@@ -2,11 +2,13 @@ package com.example.demo.config;
 
 import com.example.demo.entity.Interest;
 import com.example.demo.entity.User;
+import com.example.demo.entity.UserRole;
 import com.example.demo.repository.InterestRepository;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -18,15 +20,16 @@ import java.util.List;
 public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
-    private final InterestRepository interestRepository; // InterestRepository 주입 추가
+    private final InterestRepository interestRepository;
+    private final BCryptPasswordEncoder passwordEncoder; // 🔥 추가
 
     @Override
     public void run(String... args) throws Exception {
         // 1. 관심 분야 데이터 생성
         createInterests();
 
-        // 2. 테스트 사용자 생성
-        createTestUser();
+        // 2. 관리자 계정 생성
+        createAdminUser();
     }
 
     private void createInterests() {
@@ -47,26 +50,30 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void createTestUser() {
-        if (userRepository.count() == 0) {
-            log.info("테스트 사용자를 생성합니다.");
+    // 🔥 관리자 계정 생성
+    private void createAdminUser() {
+        if (!userRepository.existsByUserId("admin")) {
+            log.info("관리자 계정을 생성합니다.");
             try {
-                User testUser = User.builder()
-                        .userId("test@example.com")
-                        .email("test@example.com") // email 필드 추가
-                        .password("password123") // 실제 운영에서는 암호화 필요
-                        .name("테스트 사용자")
+                User adminUser = User.builder()
+                        .userId("admin")
+                        .email("admin@init.com")
+                        .password(passwordEncoder.encode("admin123!")) // 🔥 암호화된 비밀번호
+                        .name("관리자")
+                        .role(UserRole.ADMIN) // 🔥 관리자 역할 설정
                         .isActive(true)
                         .build();
 
-                userRepository.save(testUser);
-                log.info("테스트 사용자가 생성되었습니다. ID: {}", testUser.getUserId());
+                userRepository.save(adminUser);
+                log.info("관리자 계정이 생성되었습니다. ID: admin, PW: admin123!");
 
             } catch (Exception e) {
-                log.error("테스트 사용자 생성 중 오류 발생: ", e);
+                log.error("관리자 계정 생성 중 오류 발생: ", e);
             }
         } else {
-            log.info("사용자 데이터가 이미 존재합니다.");
+            log.info("관리자 계정이 이미 존재합니다.");
         }
     }
+
+
 }

@@ -55,11 +55,17 @@ public class JwtUtil {
         return expiration.before(new Date());
     }
 
-    // 사용자 정보로 토큰 생성
-    public String generateToken(String username, Long userId) {
+    // 🔥 사용자 정보로 토큰 생성 (역할 정보 포함)
+    public String generateToken(String username, Long userId, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
+        claims.put("role", role); // 🔥 역할 정보 추가
         return createToken(claims, username);
+    }
+
+    // 🔥 기존 메서드 유지 (하위 호환성)
+    public String generateToken(String username, Long userId) {
+        return generateToken(username, userId, "USER");
     }
 
     private String createToken(Map<String, Object> claims, String subject) {
@@ -82,5 +88,11 @@ public class JwtUtil {
     public Long getUserIdFromToken(String token) {
         Claims claims = getAllClaimsFromToken(token);
         return claims.get("userId", Long.class);
+    }
+
+    // 🔥 토큰에서 역할 정보 추출
+    public String getRoleFromToken(String token) {
+        Claims claims = getAllClaimsFromToken(token);
+        return claims.get("role", String.class);
     }
 }
