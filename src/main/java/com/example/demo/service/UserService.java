@@ -74,6 +74,7 @@ public class UserService {
         userProfileRepository.save(userProfile);
     }
 
+
     /**
      * 로그인 처리 메서드.
      * 인증 성공 시, JWT 토큰과 사용자의 주요 정보를 담은 DTO를 반환합니다.
@@ -94,5 +95,31 @@ public class UserService {
 
         // 인증 성공 시, JWT 토큰과 함께 LoginResponseDto에 정보를 담아 반환합니다.
         return new LoginResponseDto(user.getId(), user.getUserId(), user.getName(), token);
+    }
+
+    /**
+     * 🆕 아이디 중복 확인
+     * @param userId 확인할 아이디
+     * @return 중복이면 true, 사용 가능하면 false
+     */
+    @Transactional(readOnly = true)
+    public boolean checkUserIdDuplicate(String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            throw new IllegalArgumentException("아이디를 입력해주세요.");
+        }
+        return userRepository.existsByUserId(userId);
+    }
+
+    /**
+     * 🆕 이메일 중복 확인
+     * @param email 확인할 이메일
+     * @return 중복이면 true, 사용 가능하면 false
+     */
+    @Transactional(readOnly = true)
+    public boolean checkEmailDuplicate(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("이메일을 입력해주세요.");
+        }
+        return userRepository.existsByEmail(email);
     }
 }

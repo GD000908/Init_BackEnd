@@ -29,7 +29,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/signup", "/api/login").permitAll()
+                        .requestMatchers("/api/signup", "/api/login","/api/check-userid/**", "/api/check-email/**").permitAll()
                         .requestMatchers("/api/cover-letters/**").permitAll()
                         .requestMatchers("/api/resumes/**").permitAll()
                         .requestMatchers("/api/job-calendar/**").permitAll()

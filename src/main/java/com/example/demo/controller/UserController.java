@@ -52,4 +52,22 @@ public class UserController {
             return ResponseEntity.badRequest().body(error);
         }
     }
+
+    /**
+     * 🆕 아이디 중복 확인 API
+     */
+    @GetMapping("/check-userid/{userId}")
+    public ResponseEntity<Boolean> checkUserIdDuplicate(@PathVariable String userId) {
+        boolean isDuplicate = userService.checkUserIdDuplicate(userId);
+        return ResponseEntity.ok(isDuplicate);
+    }
+
+    /**
+     * 🆕 이메일 중복 확인 API
+     */
+    @GetMapping("/check-email/{email}")
+    public ResponseEntity<Boolean> checkEmailDuplicate(@PathVariable String email) {
+        boolean isDuplicate = userService.checkEmailDuplicate(email);
+        return ResponseEntity.ok(isDuplicate);
+    }
 }
