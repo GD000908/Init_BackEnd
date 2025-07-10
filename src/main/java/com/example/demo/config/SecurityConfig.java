@@ -29,15 +29,16 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/signup", "/api/login","/api/check-userid/**", "/api/check-email/**").permitAll()
+                        // 🆕 이메일 인증 API 허용 추가
+                        .requestMatchers("/api/signup", "/api/login", "/api/check-userid/**", "/api/check-email/**",
+                                "/api/send-email-code", "/api/verify-email-code").permitAll()
                         .requestMatchers("/api/cover-letters/**").permitAll()
                         .requestMatchers("/api/resumes/**").permitAll()
                         .requestMatchers("/api/job-calendar/**").permitAll()
-
-                        // 🔥 /api/home/** 보호 (JWT 인증 필요)
+                        // JWT 인증 필요
                         .anyRequest().authenticated()
                 )
-                // 🔥 JWT 필터 추가
+                // JWT 필터 추가
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
@@ -45,9 +46,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        // 🔥 특정 오리진만 허용 (credentials: true를 위해)
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
+        // 🔥 쿠키 허용 (세션 유지를 위해)
         configuration.setAllowCredentials(true);
         configuration.setExposedHeaders(Arrays.asList("*"));
 

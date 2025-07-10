@@ -4,5 +4,6 @@
 /out/
 /.env
 *.iml
+application.properties
 application-*.yml
 application-*.properties

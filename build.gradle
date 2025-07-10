@@ -18,45 +18,44 @@ repositories {
 }
 
 dependencies {
-    // Spring Web, JPA, Validation
+    // ✅ Spring Boot 주요 스타터
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-mail' // ✅ 이메일 인증
 
-    // Lombok
+    // ✅ Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    // Configuration processor (e.g. @ConfigurationProperties)
+    // ✅ ConfigurationProperties 지원
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
-    // DB
+    // ✅ DB 드라이버
     runtimeOnly 'com.mysql:mysql-connector-j'
 
-    // 개발용
+    // ✅ 개발 편의
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
-    // 테스트
+    // ✅ 테스트
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    // ✅ Java EE annotation (e.g. @PostConstruct 등)
     implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
 
-    // build.gradle
+    // ✅ JWT 인증
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
     implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
     implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
-
-    // HTML 템플릿 엔진 (Thymeleaf)
-    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-
+    // ✅ PDF 및 Word 생성
     implementation 'com.itextpdf:itext7-core:7.2.5'
     implementation 'com.itextpdf:html2pdf:4.0.5'
     implementation 'com.itextpdf:font-asian:7.2.5'
-    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-    implementation 'org.apache.poi:poi-ooxml:5.2.4' // Word 생성용
+    implementation 'org.apache.poi:poi-ooxml:5.2.4'
 }
 
 tasks.named('test') {
