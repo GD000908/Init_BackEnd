@@ -1,0 +1,16 @@
+package com.example.demo.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class SpecCareerStatsDto {
+    private String experience;
+    private String workRecords;
+    private String careerGoal;
+}
