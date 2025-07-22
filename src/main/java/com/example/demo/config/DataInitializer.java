@@ -58,14 +58,14 @@ public class DataInitializer implements CommandLineRunner {
                 User adminUser = User.builder()
                         .userId("admin")
                         .email("admin@init.com")
-                        .password(passwordEncoder.encode("admin123!")) // 🔥 암호화된 비밀번호
+                        .password(passwordEncoder.encode("!admin9876")) // 🔥 암호화된 비밀번호
                         .name("관리자")
                         .role(UserRole.ADMIN) // 🔥 관리자 역할 설정
                         .isActive(true)
                         .build();
 
                 userRepository.save(adminUser);
-                log.info("관리자 계정이 생성되었습니다. ID: admin, PW: admin123!");
+
 
             } catch (Exception e) {
                 log.error("관리자 계정 생성 중 오류 발생: ", e);
