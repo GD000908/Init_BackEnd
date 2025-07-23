@@ -7,7 +7,6 @@ import com.example.demo.entity.Interest;
 import com.example.demo.entity.User;
 import com.example.demo.entity.UserProfile;
 import com.example.demo.entity.UserRole;
-import com.example.demo.repository.DesiredConditionsRepository;
 import com.example.demo.repository.InterestRepository;
 import com.example.demo.repository.UserProfileRepository;
 import com.example.demo.repository.UserRepository;
@@ -32,7 +31,6 @@ public class UserService {
     private final JwtUtil jwtUtil;
     private final UserProfileRepository userProfileRepository;
     private final EmailService emailService;
-    private final DesiredConditionsRepository desiredConditionsRepository;
 
     /**
      * 일반 회원가입 처리 메서드.
@@ -40,7 +38,7 @@ public class UserService {
      */
     @Transactional
     public void signup(SignupDto dto) {
-        log.info("👤 일반 회원가입 시작: userId={}, email={}", dto.getUserId(), dto.getEmail());
+        log.info("👤 회원가입 시작: userId={}, email={}", dto.getUserId(), dto.getEmail());
 
         // 1. 아이디(userId) 중복 확인
         if (userRepository.existsByUserId(dto.getUserId())) {
@@ -58,7 +56,7 @@ public class UserService {
             interests = interestRepository.findByNameIn(dto.getInterests());
         }
 
-        // 🔥 4. 관리자 계정인지 확인하여 role 설정
+        // 4. 관리자 계정인지 확인하여 role 설정
         UserRole userRole = UserRole.USER; // 기본값
         if ("admin".equals(dto.getUserId()) || dto.getUserId().startsWith("admin")) {
             userRole = UserRole.ADMIN;
@@ -72,7 +70,7 @@ public class UserService {
                 .name(dto.getName())
                 .phone(dto.getPhone())
                 .isActive(true)
-                .role(userRole) // 🔥 역할 설정
+                .role(userRole)
                 .interests(interests)
                 .build();
 
@@ -83,63 +81,7 @@ public class UserService {
             createDefaultUserProfile(savedUser);
         }
 
-        log.info("✅ 일반 회원가입 완료: userId={}, email={}", savedUser.getUserId(), savedUser.getEmail());
-    }
-
-    /**
-     * 🆕 구글 정보와 함께 회원가입 처리
-     * @param dto 회원가입 데이터
-     * @param googleId 구글 고유 ID
-     */
-    @Transactional
-    public void signupWithGoogle(SignupDto dto, String googleId) {
-        log.info("🔗 구글 연동 회원가입 시작: userId={}, email={}, googleId={}",
-                dto.getUserId(), dto.getEmail(), googleId);
-
-        // 1. 아이디(userId) 중복 확인
-        if (userRepository.existsByUserId(dto.getUserId())) {
-            throw new IllegalArgumentException("이미 사용중인 아이디입니다.");
-        }
-
-        // 2. 이메일(email) 중복 확인
-        if (userRepository.existsByEmail(dto.getEmail())) {
-            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
-        }
-
-        // 3. 관심분야 엔티티 조회
-        List<Interest> interests = new ArrayList<>();
-        if (dto.getInterests() != null && !dto.getInterests().isEmpty()) {
-            interests = interestRepository.findByNameIn(dto.getInterests());
-        }
-
-        // 4. 구글 회원가입은 일반 사용자만 가능
-        UserRole userRole = UserRole.USER;
-
-        // 5. User 엔티티 생성 (구글 연동 정보 포함)
-        User user = User.builder()
-                .userId(dto.getUserId())
-                .email(dto.getEmail())
-                .password(passwordEncoder.encode(dto.getPassword()))
-                .name(dto.getName())
-                .phone(dto.getPhone())
-                .isActive(true)
-                .role(userRole)
-                .interests(interests)
-                .build();
-
-        User savedUser = userRepository.save(user);
-
-        // 6. 기본 UserProfile 생성
-        createDefaultUserProfile(savedUser);
-
-        // 7. 구글 연동 정보 로깅 (필요시 별도 테이블에 저장 가능)
-        if (googleId != null && !googleId.trim().isEmpty()) {
-            log.info("🔗 구글 ID 연동 정보: userId={}, googleId={}", savedUser.getUserId(), googleId);
-            // TODO: 필요시 별도 GoogleUser 테이블에 googleId 저장
-        }
-
-        log.info("✅ 구글 연동 회원가입 완료: userId={}, email={}",
-                savedUser.getUserId(), savedUser.getEmail());
+        log.info("✅ 회원가입 완료: userId={}, email={}", savedUser.getUserId(), savedUser.getEmail());
     }
 
     /**
@@ -164,12 +106,12 @@ public class UserService {
             throw new IllegalArgumentException("비활성화된 계정입니다. 관리자에게 문의하세요.");
         }
 
-        // 🔥 JWT 토큰 생성 (역할 정보 포함)
+        // JWT 토큰 생성 (역할 정보 포함)
         String token = jwtUtil.generateToken(user.getUserId(), user.getId(), user.getRole().name());
 
         log.info("✅ 로그인 성공: userId={}, role={}", user.getUserId(), user.getRole());
 
-        // 🔥 인증 성공 시, JWT 토큰과 역할 정보를 함께 반환
+        // 인증 성공 시, JWT 토큰과 역할 정보를 함께 반환
         return new LoginResponseDto(
                 user.getId(),
                 user.getUserId(),
@@ -202,8 +144,7 @@ public class UserService {
     }
 
     /**
-     * 🆕 이메일로 기존 사용자 조회 (자동 생성하지 않음)
-     * OAuth2LoginSuccessHandler에서 기존 회원 확인용으로 사용
+     * 이메일로 기존 사용자 조회
      * @param email 이메일 주소
      * @return 사용자 엔티티 (Optional)
      */
@@ -212,77 +153,10 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
 
-    // =================== 🔥 구글 로그인 관련 메서드들 (자동 회원가입용) ===================
+    // ===================계정 찾기 관련 메서드들 ===================
 
     /**
-     * 🆕 Google 로그인용 사용자 조회 또는 자동 생성
-     * OAuth2LoginSuccessHandler에서 호출됩니다.
-     * ⚠️ 주의: 이 메서드는 자동 회원가입 방식에서만 사용됩니다.
-     * 현재는 수동 회원가입 방식으로 변경되어 사용되지 않습니다.
-     *
-     * @param email Google 이메일
-     * @param name Google 사용자명
-     * @param googleId Google 고유 ID (sub)
-     * @return 사용자 엔티티
-     */
-    @Transactional
-    public User findOrCreateGoogleUser(String email, String name, String googleId) {
-        log.info("🔍 Google 사용자 조회/생성: email={}, name={}, googleId={}", email, name, googleId);
-
-        // 1. 이메일로 기존 사용자 조회
-        Optional<User> existingUser = userRepository.findByEmail(email);
-
-        if (existingUser.isPresent()) {
-            User user = existingUser.get();
-
-            // 계정 활성화 상태 확인
-            if (!user.getIsActive()) {
-                throw new IllegalArgumentException("비활성화된 계정입니다. 관리자에게 문의하세요.");
-            }
-
-            log.info("🔄 기존 Google 사용자 로그인: userId={}, email={}", user.getUserId(), email);
-            return user;
-        }
-
-        // 2. 신규 사용자 자동 생성 (⚠️ 현재는 사용되지 않음)
-        log.info("🆕 신규 Google 사용자 자동 회원가입: email={}", email);
-
-        // Google 계정은 userId를 이메일 앞부분 + 랜덤값으로 생성
-        String baseUserId = email.split("@")[0].replaceAll("[^a-zA-Z0-9]", ""); // 특수문자 제거
-        String uniqueUserId = generateUniqueUserId(baseUserId);
-
-        User newUser = User.builder()
-                .userId(uniqueUserId)
-                .email(email)
-                .password(passwordEncoder.encode(UUID.randomUUID().toString())) // 랜덤 비밀번호 (사용되지 않음)
-                .name(name)
-                .isActive(true)
-                .role(UserRole.USER) // Google 로그인은 일반 사용자
-                .interests(new ArrayList<>()) // 빈 관심분야로 시작
-                .build();
-
-        User savedUser = userRepository.save(newUser);
-
-        // 기본 UserProfile 생성
-        createDefaultUserProfile(savedUser);
-
-        log.info("✅ Google 사용자 자동 생성 완료: userId={}, email={}", savedUser.getUserId(), email);
-        return savedUser;
-    }
-
-    /**
-     * 🆕 기존 메서드 (하위 호환성 유지)
-     * 간단한 구글 로그인 처리용
-     */
-    @Transactional
-    public User findOrCreateByEmail(String email, String name) {
-        return findOrCreateGoogleUser(email, name, null);
-    }
-
-    // =================== 🔥 계정 찾기 관련 메서드들 ===================
-
-    /**
-     * 🆕 이메일로 아이디 찾기
+     * 이메일로 아이디 찾기
      * @param email 이메일 주소
      * @return 사용자 아이디
      */
@@ -309,7 +183,7 @@ public class UserService {
     }
 
     /**
-     * 🆕 비밀번호 재설정을 위한 인증 코드 발송
+     * 비밀번호 재설정을 위한 인증 코드 발송
      * @param userId 사용자 아이디
      * @param email 이메일 주소
      * @param session HTTP 세션
@@ -367,7 +241,7 @@ public class UserService {
     }
 
     /**
-     * 🆕 비밀번호 재설정 인증 코드 검증
+     * 비밀번호 재설정 인증 코드 검증
      * @param userId 사용자 아이디
      * @param email 이메일 주소
      * @param code 인증 코드
@@ -420,7 +294,7 @@ public class UserService {
     }
 
     /**
-     * 🆕 비밀번호 재설정 (인증 완료 후)
+     * 비밀번호 재설정 (인증 완료 후)
      * @param userId 사용자 아이디
      * @param email 이메일 주소
      * @param newPassword 새 비밀번호
@@ -490,7 +364,7 @@ public class UserService {
     }
 
     /**
-     * 🆕 인증 코드 생성 (6자리 숫자)
+     * 인증 코드 생성 (6자리 숫자)
      * @return 인증 코드
      */
     private String generateAuthCode() {
@@ -503,7 +377,7 @@ public class UserService {
     }
 
     /**
-     * 🆕 비밀번호 재설정 관련 세션 데이터 정리
+     * 비밀번호 재설정 관련 세션 데이터 정리
      * @param session HTTP 세션
      */
     private void clearPasswordResetSession(HttpSession session) {
@@ -516,36 +390,7 @@ public class UserService {
     }
 
     /**
-     * 🆕 고유한 userId 생성 (중복 방지)
-     * @param baseUserId 기본 userId
-     * @return 고유한 userId
-     */
-    private String generateUniqueUserId(String baseUserId) {
-        // baseUserId가 너무 짧으면 "google" 접두사 추가
-        if (baseUserId.length() < 3) {
-            baseUserId = "google_" + baseUserId;
-        }
-
-        String userId = baseUserId;
-        int counter = 1;
-
-        // 중복이 없을 때까지 숫자를 붙여서 생성 (최대 100번 시도)
-        while (userRepository.existsByUserId(userId) && counter <= 100) {
-            userId = baseUserId + counter;
-            counter++;
-        }
-
-        // 100번 시도해도 중복이면 UUID 사용
-        if (userRepository.existsByUserId(userId)) {
-            userId = "google_" + UUID.randomUUID().toString().substring(0, 8);
-        }
-
-        log.info("🔧 생성된 고유 userId: {}", userId);
-        return userId;
-    }
-
-    /**
-     * 🆕 기본 사용자 프로필 생성
+     * 기본 사용자 프로필 생성
      * @param user 사용자 엔티티
      */
     private void createDefaultUserProfile(User user) {
@@ -567,7 +412,7 @@ public class UserService {
     }
 
     /**
-     * 🆕 사용자 ID로 사용자 조회 (관리자용)
+     * 사용자 ID로 사용자 조회 (관리자용)
      * @param userId 사용자 ID
      * @return 사용자 엔티티
      */
@@ -577,7 +422,7 @@ public class UserService {
     }
 
     /**
-     * 🆕 사용자 활성화/비활성화
+     * 사용자 활성화/비활성화
      * @param userId 사용자 ID
      * @param isActive 활성화 여부
      */

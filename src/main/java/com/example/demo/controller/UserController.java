@@ -5,16 +5,11 @@ import com.example.demo.dto.LoginResponseDto;
 import com.example.demo.dto.SignupDto;
 import com.example.demo.service.EmailVerificationService;
 import com.example.demo.service.UserService;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @RestController
@@ -28,42 +23,21 @@ public class UserController {
 
     /**
      * 회원가입을 처리하는 엔드포인트입니다.
-     * 구글 계정 연동 가입과 일반 가입을 모두 처리합니다.
      */
     @PostMapping("/signup")
-    public ResponseEntity<String> signup(@RequestBody SignupDto dto, HttpSession session, HttpServletRequest request) {
+    public ResponseEntity<String> signup(@RequestBody SignupDto dto, HttpSession session) {
         log.info("🚀 회원가입 요청: userId={}, email={}", dto.getUserId(), dto.getEmail());
 
         try {
-            // 구글 회원가입인지 쿠키로 확인
-            GoogleSignupInfo googleInfo = extractGoogleSignupInfo(request);
-
-            if (googleInfo.isGoogleSignup()) {
-                log.info("🔗 구글 회원가입 감지: email={}, googleId={}", googleInfo.getEmail(), googleInfo.getGoogleId());
-
-                if (!googleInfo.getEmail().equals(dto.getEmail())) {
-                    log.error("❌ 구글 이메일 불일치: google={}, input={}", googleInfo.getEmail(), dto.getEmail());
-                    return ResponseEntity.badRequest().body("구글 계정의 이메일과 입력한 이메일이 일치하지 않습니다.");
-                }
-
-                log.info("✅ 구글 계정 이메일 인증 스킵");
-                userService.signupWithGoogle(dto, googleInfo.getGoogleId());
-                clearGoogleTempCookies(request);
-
-                log.info("✅ 구글 회원가입 완료: userId={}", dto.getUserId());
-                return ResponseEntity.ok("구글 계정 연동 회원가입이 완료되었습니다.");
-
-            } else {
-                // 일반 회원가입: 세션 기반 이메일 인증 확인
-                if (!emailVerificationService.isEmailVerified(dto.getEmail(), session)) {
-                    log.warn("❌ 이메일 인증 미완료: {}", dto.getEmail());
-                    return ResponseEntity.badRequest().body("이메일 인증을 완료해주세요.");
-                }
-
-                userService.signup(dto);
-                log.info("✅ 일반 회원가입 완료: userId={}", dto.getUserId());
-                return ResponseEntity.ok("회원가입이 완료되었습니다.");
+            // 이메일 인증 확인
+            if (!emailVerificationService.isEmailVerified(dto.getEmail(), session)) {
+                log.warn("❌ 이메일 인증 미완료: {}", dto.getEmail());
+                return ResponseEntity.badRequest().body("이메일 인증을 완료해주세요.");
             }
+
+            userService.signup(dto);
+            log.info("✅ 회원가입 완료: userId={}", dto.getUserId());
+            return ResponseEntity.ok("회원가입이 완료되었습니다.");
 
         } catch (IllegalArgumentException e) {
             log.error("❌ 회원가입 실패 (사용자 입력 오류): {}", e.getMessage());
@@ -168,7 +142,7 @@ public class UserController {
     }
 
     // =================================================================
-    // == [추가] 아이디 찾기 및 비밀번호 재설정 API
+    // == 아이디 찾기 및 비밀번호 재설정 API
     // =================================================================
 
     /**
@@ -250,70 +224,6 @@ public class UserController {
         } catch (Exception e) {
             log.error("❌ 비밀번호 재설정 중 예상치 못한 오류 발생", e);
             return ResponseEntity.internalServerError().body("비밀번호 재설정 중 오류가 발생했습니다.");
-        }
-    }
-
-    // =================================================================
-    // == 구글 회원가입 관련 헬퍼 클래스 및 메서드
-    // =================================================================
-
-    private GoogleSignupInfo extractGoogleSignupInfo(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        String tempGoogleEmail = null;
-        String tempGoogleName = null;
-        String tempGoogleId = null;
-
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                try {
-                    switch (cookie.getName()) {
-                        case "tempGoogleEmail":
-                            tempGoogleEmail = URLDecoder.decode(cookie.getValue(), StandardCharsets.UTF_8);
-                            break;
-                        case "tempGoogleName":
-                            tempGoogleName = URLDecoder.decode(cookie.getValue(), StandardCharsets.UTF_8);
-                            break;
-                        case "tempGoogleId":
-                            tempGoogleId = cookie.getValue();
-                            break;
-                    }
-                } catch (Exception e) {
-                    log.warn("❌ 쿠키 디코딩 실패: name={}, value={}", cookie.getName(), cookie.getValue());
-                }
-            }
-        }
-        return new GoogleSignupInfo(tempGoogleEmail, tempGoogleName, tempGoogleId);
-    }
-
-    private void clearGoogleTempCookies(HttpServletRequest request) {
-        log.info("🧹 구글 임시 쿠키 삭제 요청 (프론트엔드에서 처리)");
-    }
-
-    private static class GoogleSignupInfo {
-        private final String email;
-        private final String name;
-        private final String googleId;
-
-        public GoogleSignupInfo(String email, String name, String googleId) {
-            this.email = email;
-            this.name = name;
-            this.googleId = googleId;
-        }
-
-        public boolean isGoogleSignup() {
-            return email != null && name != null;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public String getGoogleId() {
-            return googleId;
         }
     }
 }
