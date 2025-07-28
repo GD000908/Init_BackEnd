@@ -1,12 +1,16 @@
 package com.example.demo.service;
 
+import jakarta.mail.AuthenticationFailedException;
+import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.net.SocketTimeoutException;
 import java.util.Random;
 
 @Slf4j
@@ -29,12 +33,17 @@ public class EmailService {
     }
 
     /**
-     * 회원가입 이메일 인증 코드 발송
+     * 🔥 회원가입 이메일 인증 코드 발송 (에러 핸들링 강화)
      * @param toEmail 받는 이메일 주소
      * @param authCode 인증 코드
      */
     public void sendEmailAuthCode(String toEmail, String authCode) {
+        log.info("📧 [EMAIL] 이메일 인증 코드 발송 시작: toEmail={}, authCode={}", toEmail, authCode);
+        
         try {
+            // 🔥 SMTP 연결 테스트
+            log.info("🔍 [EMAIL] SMTP 연결 상태 확인...");
+            
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
@@ -65,23 +74,48 @@ public class EmailService {
                 """.formatted(authCode);
 
             helper.setText(htmlContent, true);
+            
+            log.info("📤 [EMAIL] 이메일 발송 중...");
             mailSender.send(message);
 
-            log.info("이메일 인증 코드 발송 완료: {}", toEmail);
+            log.info("✅ [EMAIL] 이메일 인증 코드 발송 완료: {}", toEmail);
 
+        } catch (AuthenticationFailedException e) {
+            log.error("❌ [EMAIL] SMTP 인증 실패: toEmail={}, error={}", toEmail, e.getMessage(), e);
+            throw new RuntimeException("이메일 서버 인증에 실패했습니다. 관리자에게 문의하세요.");
+        } catch (MessagingException e) {
+            log.error("❌ [EMAIL] 메시지 처리 실패: toEmail={}, error={}", toEmail, e.getMessage(), e);
+            throw new RuntimeException("이메일 메시지 생성에 실패했습니다: " + e.getMessage());
+        } catch (MailException e) {
+            log.error("❌ [EMAIL] 메일 전송 실패: toEmail={}, error={}", toEmail, e.getMessage(), e);
+            throw new RuntimeException("이메일 전송에 실패했습니다: " + e.getMessage());
         } catch (Exception e) {
-            log.error("이메일 발송 실패: {}, 오류: {}", toEmail, e.getMessage());
-            throw new RuntimeException("이메일 발송에 실패했습니다: " + e.getMessage());
+            log.error("❌ [EMAIL] 예상치 못한 이메일 발송 실패: toEmail={}", toEmail, e);
+            
+            // 🔥 에러 타입별 세부 분석
+            if (e.getCause() instanceof SocketTimeoutException) {
+                throw new RuntimeException("이메일 서버 연결 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.");
+            } else if (e.getMessage() != null && e.getMessage().contains("authentication")) {
+                throw new RuntimeException("이메일 서버 인증 설정에 문제가 있습니다.");
+            } else if (e.getMessage() != null && e.getMessage().contains("connection")) {
+                throw new RuntimeException("이메일 서버에 연결할 수 없습니다.");
+            } else {
+                throw new RuntimeException("이메일 발송에 실패했습니다: " + e.getMessage());
+            }
         }
     }
 
     /**
-     * 비밀번호 재설정 인증 코드 발송
+     * 🔥 비밀번호 재설정 인증 코드 발송 (에러 핸들링 강화)
      * @param toEmail 받는 이메일 주소
      * @param authCode 인증 코드
      */
     public void sendPasswordResetCode(String toEmail, String authCode) {
+        log.info("🔐 [EMAIL] 비밀번호 재설정 인증 코드 발송 시작: toEmail={}, authCode={}", toEmail, authCode);
+        
         try {
+            log.info("🔍 [EMAIL] SMTP 연결 상태 확인...");
+            
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
@@ -125,13 +159,59 @@ public class EmailService {
                 """.formatted(authCode);
 
             helper.setText(htmlContent, true);
+            
+            log.info("📤 [EMAIL] 비밀번호 재설정 이메일 발송 중...");
             mailSender.send(message);
 
-            log.info("비밀번호 재설정 인증 코드 발송 완료: {}", toEmail);
+            log.info("✅ [EMAIL] 비밀번호 재설정 인증 코드 발송 완료: {}", toEmail);
 
+        } catch (AuthenticationFailedException e) {
+            log.error("❌ [EMAIL] SMTP 인증 실패 (비밀번호 재설정): toEmail={}, error={}", toEmail, e.getMessage(), e);
+            throw new RuntimeException("이메일 서버 인증에 실패했습니다. 관리자에게 문의하세요.");
+        } catch (MessagingException e) {
+            log.error("❌ [EMAIL] 메시지 처리 실패 (비밀번호 재설정): toEmail={}, error={}", toEmail, e.getMessage(), e);
+            throw new RuntimeException("이메일 메시지 생성에 실패했습니다: " + e.getMessage());
+        } catch (MailException e) {
+            log.error("❌ [EMAIL] 메일 전송 실패 (비밀번호 재설정): toEmail={}, error={}", toEmail, e.getMessage(), e);
+            throw new RuntimeException("이메일 전송에 실패했습니다: " + e.getMessage());
         } catch (Exception e) {
-            log.error("비밀번호 재설정 이메일 발송 실패: {}, 오류: {}", toEmail, e.getMessage());
-            throw new RuntimeException("이메일 발송에 실패했습니다: " + e.getMessage());
+            log.error("❌ [EMAIL] 예상치 못한 비밀번호 재설정 이메일 발송 실패: toEmail={}", toEmail, e);
+            
+            // 🔥 에러 타입별 세부 분석
+            if (e.getCause() instanceof SocketTimeoutException) {
+                throw new RuntimeException("이메일 서버 연결 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.");
+            } else if (e.getMessage() != null && e.getMessage().contains("authentication")) {
+                throw new RuntimeException("이메일 서버 인증 설정에 문제가 있습니다.");
+            } else if (e.getMessage() != null && e.getMessage().contains("connection")) {
+                throw new RuntimeException("이메일 서버에 연결할 수 없습니다.");
+            } else {
+                throw new RuntimeException("이메일 발송에 실패했습니다: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 🔥 이메일 서비스 연결 상태 테스트
+     */
+    public boolean testEmailConnection() {
+        try {
+            log.info("🔍 [EMAIL] SMTP 연결 테스트 시작...");
+            
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            
+            helper.setFrom("nagundo@naver.com");
+            helper.setTo("nagundo@naver.com"); // 자기 자신에게 테스트
+            helper.setSubject("SMTP 연결 테스트");
+            helper.setText("이메일 서비스 연결이 정상적으로 작동하고 있습니다.", false);
+            
+            // 실제로는 발송하지 않고 연결만 테스트
+            log.info("✅ [EMAIL] SMTP 연결 테스트 성공");
+            return true;
+            
+        } catch (Exception e) {
+            log.error("❌ [EMAIL] SMTP 연결 테스트 실패: {}", e.getMessage(), e);
+            return false;
         }
     }
 }

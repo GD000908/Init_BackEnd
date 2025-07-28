@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.dto.LoginDto;
 import com.example.demo.dto.LoginResponseDto;
 import com.example.demo.dto.SignupDto;
+import com.example.demo.service.EmailService;
 import com.example.demo.service.EmailVerificationService;
 import com.example.demo.service.UserService;
 import jakarta.servlet.http.Cookie;
@@ -23,6 +24,7 @@ public class UserController {
 
     private final UserService userService;
     private final EmailVerificationService emailVerificationService;
+    private final EmailService emailService;
 
     /**
      * 회원가입을 처리하는 엔드포인트입니다.
@@ -377,6 +379,72 @@ public class UserController {
             log.error("❌ [PWD_RESET] 비밀번호 재설정 중 오류: userId={}, sessionId={}", userId, sessionId, e);
             return ResponseEntity.internalServerError().body("비밀번호 재설정 중 오류가 발생했습니다.");
         }
+    }
+
+    // =================================================================
+    // == 🔥 테스트 및 디버깅 API (개발용)
+    // =================================================================
+
+    /**
+     * 🔥 이메일 서비스 연결 테스트
+     */
+    @GetMapping("/test-email")
+    public ResponseEntity<String> testEmailConnection() {
+        log.info("🧪 [TEST] 이메일 서비스 연결 테스트 요청");
+        try {
+            boolean isConnected = emailService.testEmailConnection();
+            if (isConnected) {
+                return ResponseEntity.ok("이메일 서비스 연결이 정상입니다.");
+            } else {
+                return ResponseEntity.internalServerError().body("이메일 서비스 연결에 실패했습니다.");
+            }
+        } catch (Exception e) {
+            log.error("❌ [TEST] 이메일 연결 테스트 실패", e);
+            return ResponseEntity.internalServerError().body("이메일 연결 테스트 중 오류: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 🔥 세션 상태 확인 API (디버깅용)
+     */
+    @GetMapping("/session-status")
+    public ResponseEntity<String> getSessionStatus(HttpSession session, HttpServletRequest request) {
+        log.info("🔍 [DEBUG] 세션 상태 확인 요청");
+        
+        StringBuilder status = new StringBuilder();
+        status.append("=== 세션 상태 ===\n");
+        status.append("Session ID: ").append(session.getId()).append("\n");
+        status.append("Session New: ").append(session.isNew()).append("\n");
+        status.append("Max Inactive Interval: ").append(session.getMaxInactiveInterval()).append("초\n");
+        status.append("Creation Time: ").append(new java.util.Date(session.getCreationTime())).append("\n");
+        status.append("Last Accessed Time: ").append(new java.util.Date(session.getLastAccessedTime())).append("\n");
+        
+        status.append("\n=== 세션 속성 ===\n");
+        java.util.Enumeration<String> attributeNames = session.getAttributeNames();
+        while (attributeNames.hasMoreElements()) {
+            String name = attributeNames.nextElement();
+            Object value = session.getAttribute(name);
+            status.append(name).append(": ").append(value).append("\n");
+        }
+        
+        status.append("\n=== 요청 헤더 ===\n");
+        java.util.Enumeration<String> headerNames = request.getHeaderNames();
+        while (headerNames.hasMoreElements()) {
+            String name = headerNames.nextElement();
+            String value = request.getHeader(name);
+            status.append(name).append(": ").append(value).append("\n");
+        }
+        
+        status.append("\n=== 쿠키 ===\n");
+        if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                status.append(cookie.getName()).append("=").append(cookie.getValue()).append("\n");
+            }
+        } else {
+            status.append("쿠키 없음\n");
+        }
+        
+        return ResponseEntity.ok(status.toString());
     }
 
     // =================================================================

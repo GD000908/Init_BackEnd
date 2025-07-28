@@ -34,7 +34,9 @@ public class SecurityConfig {
                                 "/api/find-userid",
                                 "/api/send-password-reset-code",
                                 "/api/verify-password-reset-code",
-                                "/api/reset-password"
+                                "/api/reset-password",
+                                "/api/test-email",
+                                "/api/session-status"
                         ).permitAll()
                         .requestMatchers("/api/cover-letters/**").permitAll()
                         .requestMatchers("/api/resumes/**").permitAll()
