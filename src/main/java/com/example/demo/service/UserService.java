@@ -48,9 +48,7 @@ public class UserService {
             long currentTime = System.currentTimeMillis();
             globalPasswordResetStorage.entrySet().removeIf(entry -> {
                 boolean isExpired = currentTime - entry.getValue().getTimestamp() > 1800000; // 30분
-                if (isExpired) {
-                    log.info("🧹 [PWD_CLEANUP] 만료된 비밀번호 재설정 데이터 삭제: key={}", entry.getKey());
-                }
+
                 return isExpired;
             });
         }, 1, 1, TimeUnit.MINUTES);

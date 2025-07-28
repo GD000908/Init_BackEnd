@@ -30,9 +30,7 @@ public class EmailVerificationService {
             long currentTime = System.currentTimeMillis();
             globalAuthStorage.entrySet().removeIf(entry -> {
                 boolean isExpired = currentTime - entry.getValue().getTimestamp() > 1800000; // 30분
-                if (isExpired) {
-                    log.info("🧹 [CLEANUP] 만료된 인증 데이터 삭제: email={}", entry.getKey());
-                }
+
                 return isExpired;
             });
         }, 1, 1, TimeUnit.MINUTES);
