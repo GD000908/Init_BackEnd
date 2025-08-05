@@ -1,10 +1,12 @@
 package com.example.demo.dto;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ApiResponse<T> {
@@ -15,29 +17,35 @@ public class ApiResponse<T> {
 
     // 성공 응답 생성
     public static <T> ApiResponse<T> success(String message, T data) {
-        ApiResponse<T> response = new ApiResponse<>();
-        response.setSuccess(true);
-        response.setMessage(message);
-        response.setData(data);
-        return response;
+        return ApiResponse.<T>builder()
+                .success(true)
+                .message(message)
+                .data(data)
+                .build();
     }
 
     // 성공 응답 생성 (데이터 없음)
     public static <T> ApiResponse<T> success(String message) {
-        return success(message, null);
+        return ApiResponse.<T>builder()
+                .success(true)
+                .message(message)
+                .build();
     }
 
     // 에러 응답 생성
     public static <T> ApiResponse<T> error(String message) {
-        return error(message, null);
+        return ApiResponse.<T>builder()
+                .success(false)
+                .message(message)
+                .build();
     }
 
     // 에러 응답 생성 (에러 코드 포함)
     public static <T> ApiResponse<T> error(String message, String errorCode) {
-        ApiResponse<T> response = new ApiResponse<>();
-        response.setSuccess(false);
-        response.setMessage(message);
-        response.setErrorCode(errorCode);
-        return response;
+        return ApiResponse.<T>builder()
+                .success(false)
+                .message(message)
+                .errorCode(errorCode)
+                .build();
     }
 }
